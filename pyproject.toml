@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yamasabha"
+version = "0.1.0"
+description = "Yamasabha — a unified security platform: one FastAPI dashboard + API over 7 security engines."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Yamraj", email = "solankisumitt@gmail.com" }]
+keywords = ["security", "platform", "fastapi", "ai-security", "soc", "dashboard"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "python-multipart>=0.0.9",
+    "echotrap @ git+https://github.com/YAMRAJ13y/echotrap@main",
+    "skillsentry @ git+https://github.com/YAMRAJ13y/skillsentry@main",
+    "patchpilot @ git+https://github.com/YAMRAJ13y/patchpilot@main",
+    "iocforge @ git+https://github.com/YAMRAJ13y/iocforge@main",
+    "identitywatch @ git+https://github.com/YAMRAJ13y/identitywatch@main",
+    "pickleguard @ git+https://github.com/YAMRAJ13y/pickleguard@main",
+    "leaklens @ git+https://github.com/YAMRAJ13y/leaklens@main",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "httpx>=0.27"]
+
+[project.scripts]
+yamasabha = "yamasabha.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/YAMRAJ13y/yamasabha"
+Issues = "https://github.com/YAMRAJ13y/yamasabha/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+yamasabha = ["static/*.html"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/yamasabha/samples.py" = ["E501"]
+"tests/*" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
