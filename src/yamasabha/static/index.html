@@ -138,6 +138,13 @@
   .bar{ height:12px; border-radius:6px; background:linear-gradient(90deg,var(--acc),var(--violet)); box-shadow:0 0 14px color-mix(in srgb,var(--acc) 40%,transparent); } .barrow .n{ color:var(--text); font-weight:700; }
   table.t{ width:100%; border-collapse:collapse; font-size:11.5px; } table.t th{ text-align:left; color:var(--muted); font-weight:600; padding:5px 6px; border-bottom:1px solid var(--line); } table.t td{ padding:5px 6px; border-bottom:1px solid rgba(27,40,64,.5); }
   .gauge{ display:flex; gap:11px; flex-wrap:wrap; } .stat{ border:1px solid var(--line); border-radius:9px; padding:7px 13px; font-size:11.5px; color:var(--muted); } .stat b{ display:block; font-family:var(--disp); font-size:18px; color:var(--text); }
+  .vrow{ display:flex; align-items:center; gap:12px; }
+  .donut{ width:78px; height:78px; flex:0 0 78px; border-radius:50%; display:grid; place-items:center; position:relative;
+    background:conic-gradient(var(--c,var(--cyan)) calc(var(--p,0)*1%), rgba(255,255,255,.06) 0); animation:fill .6s ease; }
+  .donut::before{ content:""; position:absolute; inset:8px; border-radius:50%; background:var(--panel); }
+  .donut b{ position:relative; font-family:var(--disp); font-size:18px; color:var(--text); }
+  @keyframes fill{ from{ background:conic-gradient(var(--c,var(--cyan)) 0, rgba(255,255,255,.06) 0);} }
+  .rtools{ display:flex; justify-content:flex-end; gap:8px; }
   .rawhead{ display:flex; align-items:center; justify-content:space-between; }
   .copy{ font-size:11px; color:var(--muted); border:1px solid var(--line); border-radius:7px; padding:3px 10px; cursor:pointer; } .copy:hover{ color:var(--cyan); border-color:var(--cyan); }
   details summary{ cursor:pointer; color:var(--muted); font-size:11.5px; }
@@ -150,7 +157,7 @@
 <body>
 <div class="wrap">
   <div class="bar">
-    <div class="brand" onclick="location.hash='#/'"><span class="mark">🜂</span><b>YAMASABHA</b></div>
+    <div class="brand" onclick="location.hash='#/'"><svg class="mark" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 1.6 L22.4 12 L12 22.4 L1.6 12 Z" stroke="url(#g)" stroke-width="1.5"/><circle cx="12" cy="12" r="3.4" stroke="url(#g)" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="#00eaff"/><defs><linearGradient id="g" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#00eaff"/><stop offset="1" stop-color="#9b6bff"/></linearGradient></defs></svg><b>YAMASABHA</b></div>
     <div class="status-pill"><span class="dot"></span><span id="engcount">7</span> engines online · <span id="clock">--:--:--</span></div>
   </div>
   <div class="shell">
@@ -175,6 +182,8 @@ const PIPE={
 function tick(){ document.getElementById("clock").textContent=new Date().toTimeString().slice(0,8); } setInterval(tick,1000); tick();
 function bars(rows){ const max=Math.max(1,...rows.map(r=>r[1])); return rows.map(([n,c])=>`<div class="barrow"><span class="lab">${esc(n)}</span><span class="bar" style="width:${Math.max(6,150*c/max)}px"></span><span class="n">${c}</span></div>`).join(""); }
 
+function gauge(score, cls){ const c=cls==='mal'?'var(--red)':cls==='ok'?'var(--green)':cls==='warn'?'var(--amber)':'var(--acc)'; const s=Math.max(0,Math.min(100,Math.round(score||0))); return `<div class="donut" style="--p:${s};--c:${c}"><b>${s}</b></div>`; }
+function downloadReport(name){ const md=`# Yamasabha — ${name} report\n\nGenerated: ${new Date().toISOString()}\n\n\`\`\`json\n${LASTJSON}\n\`\`\`\n`; const blob=new Blob([md],{type:"text/markdown"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`yamasabha-${name.toLowerCase().replace(/\s+/g,'-')}-report.md`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
 const R={
   echotrap(d){ const a=d.without_defense||{},b=d.with_defense||{}; return {flagged:a.leaked, html:`
     <div class="verdict ${b.leaked?'mal':'ok'}">${b.leaked?'🔴 STILL LEAKING':'🟢 ATTACK NEUTRALIZED'}</div>
@@ -183,11 +192,10 @@ const R={
   iocforge(d){ const u=d.unified||{}, cls=u.verdict==='malicious'?'mal':(u.verdict==='benign'?'ok':'warn');
     const provs=(d.providers||[]).filter(p=>p.status==='ok').map(p=>`<div class="barrow"><span class="lab">${esc(p.provider)}</span><span class="pill ${p.verdict==='malicious'?'high':p.verdict==='benign'?'safe':'medium'}">${esc(p.verdict)}</span><span class="n">${p.score}</span></div>`).join("");
     const fam=(d.enrichment?.malware_families||[]).map(f=>`<span class="pill tax">${esc(f)}</span>`).join("");
-    return {flagged:['malicious','suspicious'].includes(u.verdict), html:`<div class="verdict ${cls}">${esc((u.verdict||'?').toUpperCase())} · ${esc(d.ioc_type)}<span class="score">${u.score}/100</span></div>
-    <div class="gauge"><div class="stat">confidence <b>${Math.round((u.confidence||0)*100)}%</b></div><div class="stat">providers <b>${u.providers_contributing||0}</b></div></div>${fam?`<div>${fam}</div>`:""}<div>${provs}</div>`}; },
+    return {flagged:['malicious','suspicious'].includes(u.verdict), html:`<div class="vrow">${gauge(u.score,cls)}<div style="flex:1"><div class="verdict ${cls}">${esc((u.verdict||'?').toUpperCase())} · ${esc(d.ioc_type)}</div><div class="gauge" style="margin-top:8px"><div class="stat">confidence <b>${Math.round((u.confidence||0)*100)}%</b></div><div class="stat">providers <b>${u.providers_contributing||0}</b></div></div></div></div>${fam?`<div>${fam}</div>`:""}<div>${provs}</div>`}; },
   skillsentry(d){ const s=d.summary||{}, cls=s.verdict==='block'?'mal':(s.findingsCount?'warn':'ok');
     const f=(d.findings||[]).slice(0,6).map(x=>`<div class="finding ${x.severity}"><span class="t">${esc(x.ruleId)} ${esc(x.ruleName)}</span> <span class="pill ${x.severity}">${esc(x.severity)}</span><br><span class="muted">${esc(x.evidence)}</span> <span class="pill tax">${esc((x.taxonomy||'').split(' / ')[0])}</span></div>`).join("");
-    return {flagged:s.verdict==='block', html:`<div class="verdict ${cls}">${esc((s.riskLevel||'?').toUpperCase())}<span class="score">${s.riskScore}/100</span></div><div class="gauge"><div class="stat">findings <b>${s.findingsCount||0}</b></div><div class="stat">verdict <b>${esc(s.verdict)}</b></div></div>${f}`}; },
+    return {flagged:s.verdict==='block', html:`<div class="vrow">${gauge(s.riskScore,cls)}<div style="flex:1"><div class="verdict ${cls}">${esc((s.riskLevel||'?').toUpperCase())} RISK</div><div class="gauge" style="margin-top:8px"><div class="stat">findings <b>${s.findingsCount||0}</b></div><div class="stat">verdict <b>${esc(s.verdict)}</b></div></div></div></div>${f}`}; },
   patchpilot(d){ const t=d.tierSummary||{}, rows=(d.findings||[]).slice(0,7);
     const tbl=rows.map(r=>`<tr><td>${r.rank}</td><td>${esc(r.cve)}</td><td>${esc(r.product)}</td><td><b>${r.priorityScore}</b></td><td>${r.kev?'<span class="pill kev">KEV</span>':''}${r.ransomware?'<span class="pill high">RANSOM</span>':''}</td><td>${Math.round((r.epss||0)*100)}%</td><td>${r.cvss}</td></tr>`).join("");
     return {flagged:(t.ACT_NOW||0)>0, html:`<div class="gauge"><div class="stat" style="color:var(--red)">ACT NOW <b>${t.ACT_NOW||0}</b></div><div class="stat" style="color:var(--amber)">SCHEDULE <b>${t.SCHEDULE||0}</b></div><div class="stat">DEFER <b>${t.DEFER||0}</b></div></div><table class="t"><tr><th>#</th><th>CVE</th><th>Product</th><th>Score</th><th></th><th>EPSS</th><th>CVSS</th></tr>${tbl}</table>`}; },
@@ -235,7 +243,7 @@ function render(t, data){
   if(data.error){ box.innerHTML=`<div class="err">⚠ ${esc(data.error)}</div>`; return; }
   let r={flagged:false,html:""}; try{ r=(R[t.id]||(()=>({flagged:false,html:""})))(data); }catch(e){ r.html=`<div class="err">render error: ${esc(e)}</div>`; }
   LASTJSON=JSON.stringify(data,null,2);
-  box.innerHTML=r.html+`<details><summary><span class="rawhead"><span>raw JSON</span> <span class="copy" onclick="event.preventDefault();navigator.clipboard.writeText(LASTJSON);this.textContent='copied ✓';setTimeout(()=>this.textContent='copy',1200)">copy</span></span></summary><pre>${esc(LASTJSON)}</pre></details>`;
+  box.innerHTML=`<div class="rtools"><button class="copy" onclick="downloadReport('${esc(t.name)}')">⬇ export .md</button></div>`+r.html+`<details><summary><span class="rawhead"><span>raw JSON</span> <span class="copy" onclick="event.preventDefault();navigator.clipboard.writeText(LASTJSON);this.textContent='copied ✓';setTimeout(()=>this.textContent='copy',1200)">copy</span></span></summary><pre>${esc(LASTJSON)}</pre></details>`;
   RUNS++; if(r.flagged) THREATS++;
 }
 async function run(t){
