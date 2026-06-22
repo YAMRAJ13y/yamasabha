@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yamasabha — the court of Yama</title>
+<style>
+  :root {
+    --bg: #0D1117; --card: #111722; --line: #1f2733;
+    --cyan: #00F0FF; --red: #FF003C; --green: #39FF14;
+    --text: #c9d1d9; --muted: #8b949e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; line-height: 1.5;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 18px 60px; }
+  header { text-align: center; margin-bottom: 8px; }
+  h1 {
+    font-size: clamp(34px, 7vw, 64px); margin: 0; letter-spacing: 4px;
+    background: linear-gradient(90deg, var(--cyan), var(--red), var(--green));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub { color: var(--muted); margin-top: 6px; }
+  .sub .om { color: var(--cyan); }
+  .rule { height: 3px; margin: 18px 0 26px;
+    background: linear-gradient(90deg, var(--cyan), var(--red), var(--green)); }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .card h2 { font-size: 17px; margin: 0; }
+  .card .tag { color: var(--muted); font-size: 12.5px; min-height: 32px; }
+  textarea, input[type=text] {
+    width: 100%; background: #0b0f16; color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px; font-family: inherit; font-size: 12px; resize: vertical;
+  }
+  textarea { min-height: 90px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button {
+    background: transparent; color: var(--cyan); border: 1px solid var(--cyan);
+    border-radius: 6px; padding: 7px 16px; font-family: inherit; font-weight: 700;
+    cursor: pointer; letter-spacing: 1px;
+  }
+  button:hover { background: var(--cyan); color: var(--bg); }
+  button:disabled { opacity: .5; cursor: wait; }
+  label.toggle { color: var(--muted); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+  .status { font-weight: 700; font-size: 13px; min-height: 18px; }
+  .status.mal { color: var(--red); } .status.ok { color: var(--green); } .status.warn { color: #ffb000; }
+  pre {
+    background: #0b0f16; border: 1px solid var(--line); border-radius: 6px; margin: 0;
+    padding: 10px; max-height: 320px; overflow: auto; font-size: 11.5px; white-space: pre-wrap;
+    word-break: break-word; display: none;
+  }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 34px; }
+  footer a { color: var(--cyan); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>YAMASABHA</h1>
+    <div class="sub"><span class="om">यमसभा</span> · the court where threats are judged · <span id="count">7</span> security engines, one platform</div>
+  </header>
+  <div class="rule"></div>
+  <div class="grid" id="grid"></div>
+  <footer>
+    Yamasabha wraps 7 independent open-source engines &mdash;
+    <a href="https://github.com/YAMRAJ13y" target="_blank" rel="noopener">github.com/YAMRAJ13y</a>.
+    Built by Yamraj.
+  </footer>
+</div>
+
+<script>
+const API = "";
+
+function headline(id, d) {
+  if (d.error) return { cls: "warn", text: "⚠ " + d.error };
+  try {
+    if (id === "echotrap") {
+      const a = d.without_defense?.leaked, b = d.with_defense?.leaked;
+      return { cls: b ? "mal" : "ok", text: (a ? "🔴 SECRET STOLEN without defense" : "no leak") + " → " + (b ? "still leaking!" : "🟢 BLOCKED with EchoTrap") };
+    }
+    if (id === "iocforge") { const u = d.unified || {}; return { cls: u.verdict === "malicious" ? "mal" : (u.verdict === "benign" ? "ok" : "warn"), text: `${(u.verdict||"?").toUpperCase()} · score ${u.score}/100 · conf ${(u.confidence*100||0).toFixed(0)}%` }; }
+    if (id === "skillsentry") { const s = d.summary || {}; return { cls: s.verdict === "block" ? "mal" : "ok", text: `${(s.riskLevel||"?").toUpperCase()} (${s.riskScore}/100) · ${s.findingsCount} findings · ${s.verdict}` }; }
+    if (id === "pickleguard") { const s = d.summary || {}; return { cls: s.malicious ? "mal" : "ok", text: `🔴 ${s.malicious||0} malicious · 🟢 ${s.safe||0} safe (of ${d.scanned})` }; }
+    if (id === "patchpilot") { const t = d.tierSummary || {}; return { cls: t.ACT_NOW ? "mal" : "ok", text: `ACT_NOW ${t.ACT_NOW||0} · SCHEDULE ${t.SCHEDULE||0} · DEFER ${t.DEFER||0}` }; }
+    if (id === "identitywatch") { const s = d.severity_summary || {}; return { cls: (s.high||s.medium) ? "mal" : "ok", text: `${d.alerts_count} alerts · 🔴 ${s.high||0} high · 🟠 ${s.medium||0} med` }; }
+    if (id === "leaklens") { const g = d.top_group || {}; return { cls: "warn", text: `${d.total_victims} victims · top: ${g.name} (${g.count}) · ${d.distinct_groups} groups` }; }
+  } catch (e) {}
+  return { cls: "warn", text: "done" };
+}
+
+async function run(tool, card) {
+  const btn = card.querySelector("button");
+  const status = card.querySelector(".status");
+  const pre = card.querySelector("pre");
+  btn.disabled = true; status.className = "status"; status.textContent = "running…";
+  try {
+    let res;
+    if (tool.input === "file") {
+      const fileEl = card.querySelector("input[type=file]");
+      if (fileEl && fileEl.files.length) {
+        const fd = new FormData(); fd.append("file", fileEl.files[0]);
+        res = await fetch(`${API}/api/${tool.id}`, { method: "POST", body: fd });
+      } else {
+        res = await fetch(`${API}/api/${tool.id}`, { method: "POST" });
+      }
+    } else if (tool.input === "run") {
+      res = await fetch(`${API}/api/${tool.id}`, { method: "POST" });
+    } else {
+      const body = { input: "", live: false };
+      const ta = card.querySelector("textarea, input[type=text]");
+      if (ta) body.input = ta.value;
+      const chk = card.querySelector("input[type=checkbox]");
+      if (chk) body.live = chk.checked;
+      res = await fetch(`${API}/api/${tool.id}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+    }
+    const data = await res.json();
+    const h = headline(tool.id, data);
+    status.className = "status " + h.cls; status.textContent = h.text;
+    pre.textContent = JSON.stringify(data, null, 2); pre.style.display = "block";
+  } catch (e) {
+    status.className = "status warn"; status.textContent = "request failed: " + e;
+  } finally { btn.disabled = false; }
+}
+
+function buildCard(tool) {
+  const card = document.createElement("div"); card.className = "card";
+  let inputHtml = "";
+  if (tool.input === "text") inputHtml = `<textarea spellcheck="false">${(tool.sample||"").replace(/</g,"&lt;")}</textarea>`;
+  else if (tool.input === "ioc") inputHtml = `<input type="text" value="${tool.sample||""}" spellcheck="false" />`;
+  else if (tool.input === "file") inputHtml = `<input type="file" /><div class="tag">No file? Run a built-in malicious/benign demo.</div>`;
+  else if (tool.input === "toggle") inputHtml = `<label class="toggle"><input type="checkbox" /> fetch live (ransomware.live)</label>`;
+  card.innerHTML = `
+    <h2>${tool.emoji} ${tool.name}</h2>
+    <div class="tag">${tool.tagline}</div>
+    ${inputHtml}
+    <div class="row"><button>RUN</button></div>
+    <div class="status"></div>
+    <details><summary>raw JSON</summary><pre></pre></details>`;
+  card.querySelector("button").addEventListener("click", () => run(tool, card));
+  return card;
+}
+
+(async function () {
+  try {
+    const { tools } = await (await fetch(`${API}/api/tools`)).json();
+    document.getElementById("count").textContent = tools.length;
+    const grid = document.getElementById("grid");
+    tools.forEach(t => grid.appendChild(buildCard(t)));
+  } catch (e) {
+    document.getElementById("grid").innerHTML = "<p>Failed to load tools: " + e + "</p>";
+  }
+})();
+</script>
+</body>
+</html>
