@@ -1,0 +1,10 @@
+# One-click free deploy on Render (https://render.com). Connect this repo and Render
+# reads this file. The build env includes git, so the git+https engine deps install.
+services:
+  - type: web
+    name: yamasabha
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: uvicorn yamasabha.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
